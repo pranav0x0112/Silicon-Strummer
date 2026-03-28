@@ -16,8 +16,7 @@ jobs:
       - name: Build GDS
         uses: TinyTapeout/tt-gds-action@ihp-cmos5l
         with:
-          pdk: ihp-sg13g2
-          librelane-version: 3.0.0.dev44
+          pdk: ihp-sg13cmos5l
 
   precheck:
     needs: gds
