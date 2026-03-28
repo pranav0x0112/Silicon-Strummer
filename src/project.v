@@ -1,6 +1,5 @@
 /*
  * Silicon Strummer — VGA Fretboard Guitar
- * Copyright (c) 2024 Your Name
  * SPDX-License-Identifier: Apache-2.0
  *
  * ui_in[0] : move right  (fret +)
@@ -25,6 +24,7 @@ module tt_um_silicon_strummer (
     input  wire       clk,
     input  wire       rst_n
 );
+
     wire hsync, vsync, video_active;
     wire [9:0] x, y;
 
@@ -40,44 +40,49 @@ module tt_um_silicon_strummer (
 
     wire [1:0] R, G, B;
     assign uo_out  = {hsync, B[0], G[0], R[0], vsync, B[1], G[1], R[1]};
-
     assign uio_oe  = 8'hff;
     assign uio_out = {audio_out, 7'b0};
 
     reg [4:0] btn_s0, btn_s1;
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
-            btn_s0 <= 0; btn_s1 <= 0;
+            btn_s0 <= 0;
+            btn_s1 <= 0;
         end else begin
             btn_s0 <= ui_in[4:0];
             btn_s1 <= btn_s0;
         end
     end
 
-    reg [2:0] fret_pos;   // 0–7
-    reg [2:0] str_pos;    // 0–5
+    reg [2:0] fret_pos;
+    reg [2:0] str_pos;
     reg vsync_prev;
 
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
-            fret_pos  <= 0;
-            str_pos   <= 0;
+            fret_pos   <= 0;
+            str_pos    <= 0;
             vsync_prev <= 0;
         end else begin
             vsync_prev <= vsync;
-            if (vsync & ~vsync_prev) begin                          // rising edge of vsync
-                if (btn_s1[0] && fret_pos < 3'd7) fret_pos <= fret_pos + 1; // right
-                if (btn_s1[1] && fret_pos > 3'd0) fret_pos <= fret_pos - 1; // left
-                if (btn_s1[2] && str_pos  > 3'd0) str_pos  <= str_pos  - 1; // up
-                if (btn_s1[3] && str_pos  < 3'd5) str_pos  <= str_pos  + 1; // down
+            if (vsync & ~vsync_prev) begin
+                if (btn_s1[0] && fret_pos < 3'd7) fret_pos <= fret_pos + 1;
+                if (btn_s1[1] && fret_pos > 3'd0) fret_pos <= fret_pos - 1;
+                if (btn_s1[2] && str_pos  > 3'd0) str_pos  <= str_pos  - 1;
+                if (btn_s1[3] && str_pos  < 3'd5) str_pos  <= str_pos  + 1;
             end
         end
     end
 
-    wire [2:0] cell_col  = x / 10'd80;
-    wire [2:0] cell_row  = y / 10'd80;
-    wire [6:0] cell_x    = x[6:0] % 7'd80;
-    wire [6:0] cell_y    = y[6:0] % 7'd80;
+    wire [9:0] cell_col_w = x / 10'd80;
+    wire [9:0] cell_row_w = y / 10'd80;
+    wire [9:0] cell_x_w   = x % 10'd80;
+    wire [9:0] cell_y_w   = y % 10'd80;
+
+    wire [2:0] cell_col   = cell_col_w[2:0];
+    wire [2:0] cell_row   = cell_row_w[2:0];
+    wire [6:0] cell_x     = cell_x_w[6:0];
+    wire [6:0] cell_y     = cell_y_w[6:0];
 
     wire is_cursor   = (cell_col == fret_pos) && (cell_row == str_pos);
     wire grid_line   = (cell_x >= 7'd78) || (cell_y >= 7'd78);
@@ -89,13 +94,13 @@ module tt_um_silicon_strummer (
         if (video_active) begin
             if (is_cursor) begin
                 if (grid_line) begin
-                    r_reg = 2'b11; g_reg = 2'b11; b_reg = 2'b11; // white border
+                    r_reg = 2'b11; g_reg = 2'b11; b_reg = 2'b11;
                 end else begin
-                    r_reg = 2'b11; g_reg = 2'b11; b_reg = 2'b00; // amber fill
+                    r_reg = 2'b11; g_reg = 2'b11; b_reg = 2'b00;
                 end
             end else begin
-                if (grid_line)        begin r_reg = 2'b00; g_reg = 2'b00; b_reg = 2'b01; end // dim blue
-                else if (string_line) begin r_reg = 2'b00; g_reg = 2'b01; b_reg = 2'b00; end // dim green
+                if (grid_line)        begin r_reg = 2'b00; g_reg = 2'b00; b_reg = 2'b01; end
+                else if (string_line) begin r_reg = 2'b00; g_reg = 2'b01; b_reg = 2'b00; end
             end
         end
     end
@@ -115,7 +120,7 @@ module tt_um_silicon_strummer (
         if (!rst_n) begin
             audio_cnt <= 0;
             audio_out <= 0;
-        end else if (btn_s1[4]) begin       // sound enable
+        end else if (btn_s1[4]) begin
             if (audio_cnt == 0) begin
                 audio_cnt <= divider;
                 audio_out <= ~audio_out;
@@ -128,7 +133,6 @@ module tt_um_silicon_strummer (
         end
     end
 
-    // Suppress unused warnings
     wire _unused = &{ena, uio_in, 1'b0};
 
 endmodule
