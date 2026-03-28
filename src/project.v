@@ -25,10 +25,6 @@ module tt_um_silicon_strummer (
     input  wire       clk,
     input  wire       rst_n
 );
-
-    // ================================================================
-    // VGA sync
-    // ================================================================
     wire hsync, vsync, video_active;
     wire [9:0] x, y;
 
@@ -42,17 +38,12 @@ module tt_um_silicon_strummer (
         .vpos       (y)
     );
 
-    // TinyVGA PMOD output
     wire [1:0] R, G, B;
     assign uo_out  = {hsync, B[0], G[0], R[0], vsync, B[1], G[1], R[1]};
 
-    // Audio on uio_out[7] (matches music demo convention)
     assign uio_oe  = 8'hff;
     assign uio_out = {audio_out, 7'b0};
 
-    // ================================================================
-    // Button debounce — 2-stage sync
-    // ================================================================
     reg [4:0] btn_s0, btn_s1;
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
@@ -63,9 +54,6 @@ module tt_um_silicon_strummer (
         end
     end
 
-    // ================================================================
-    // Cursor — updated once per frame on vsync rising edge
-    // ================================================================
     reg [2:0] fret_pos;   // 0–7
     reg [2:0] str_pos;    // 0–5
     reg vsync_prev;
@@ -86,9 +74,6 @@ module tt_um_silicon_strummer (
         end
     end
 
-    // ================================================================
-    // Grid pixel logic — 8 frets × 6 strings, each cell 80×80 px
-    // ================================================================
     wire [2:0] cell_col  = x / 10'd80;
     wire [2:0] cell_row  = y / 10'd80;
     wire [6:0] cell_x    = x[6:0] % 7'd80;
@@ -119,12 +104,6 @@ module tt_um_silicon_strummer (
     assign G = g_reg;
     assign B = b_reg;
 
-    // ================================================================
-    // Audio — square wave oscillator
-    // note = str_pos * 8 + fret_pos  (0–47)
-    // divider: note 0 → 125000 cycles (~100 Hz @ 25 MHz)
-    //          note 47 → 6250 cycles  (~2 kHz @ 25 MHz)
-    // ================================================================
     wire [5:0]  note        = {str_pos, fret_pos};
     wire [16:0] note_scaled = note * 17'd2510;
     wire [16:0] divider     = (note_scaled >= 17'd125000) ? 17'd6250
